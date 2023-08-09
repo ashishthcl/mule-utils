@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xml-module="http://www.mulesoft.org/schema/mule/xml-module"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/xml-module http://www.mulesoft.org/schema/mule/xml-module/current/mule-xml-module.xsd">
+	<anypoint-mq:config name="Anypoint_MQ_Config" doc:name="Anypoint MQ Config" doc:id="59ce3029-3873-42bd-872d-5db1b76f03ed" >
+		<anypoint-mq:connection url="${ch.amq.url}" clientId="${ch.amq.client.app.id}" clientSecret="${ch.amq.client.secret}" />
+	</anypoint-mq:config>
+	<validation:config name="Validation_Config" doc:name="Validation Config" doc:id="f8399f08-aa74-409d-8681-ed81f821b3b4" />
+	<flow name="job-notification-implFlow" doc:id="1c4b03e7-4c83-4b03-bd91-4d0a4168551b" >
+		<anypoint-mq:subscriber doc:name="listen_to_job_notify" doc:id="992a6222-27eb-465d-b576-b7feaaf47e0b" config-ref="Anypoint_MQ_Config" destination="${ch.amq.notify.job.queue}"/>
+		<set-variable value="job-notification-implFlow" doc:name="flowName" doc:id="733c9e1f-6eb7-4597-abfb-e8a9fd9bc9b3" variableName="flowName"/>
+		<validation:is-not-null doc:name="Is not null" doc:id="0bdf0a23-92ee-420a-a330-3b2c3950eefa" config-ref="Validation_Config" value="#[payload]" message="Job Notification payload cannot be null"/>
+		<set-variable value="#[payload]" doc:name="save_original_payload" doc:id="0b9ed1ec-9364-4a0f-a072-dedf6e6bceca" variableName="originalMessage"/>
+		<logger level="INFO" doc:name="log_to_console" doc:id="5ca1de9c-e3ba-4f8d-9291-315ab024a453" message="&gt;&gt;&gt;&gt; JOB_NOTIFICATION_INPUT_PAYLOAD : #[payload]" category="com.rodanandfields.common.utils.payload.trace"/>
+		<ee:transform doc:name="Set Context" doc:id="3874cd35-f4c4-4844-87b2-27a64fe7c3b3" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-JobNotificationProcessStart-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="ee190344-a9c2-499e-8beb-5d7ea3d659e0" name="logger-start-process-flow" />
+		<json:validate-schema doc:name="Validate JSON Schema" doc:id="afeec0cc-37b3-4320-84db-eb1491c9c237" schema="schemas/job-notification.json" />
+		<validation:is-email doc:name="Validate Email" doc:id="a9236372-5b24-4a46-83eb-f8cbeea6f904" email="#[vars.originalMessage.Email.To]" config-ref="Validation_Config" message="Please provide To to Email" />
+		<ee:transform doc:name="json_to_xml" doc:id="37472d77-0351-4a4f-9b25-c651ae2d5977" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml encoding='UTF-8'
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<xml-module:xslt-transform doc:name="transform_to_html" doc:id="89dcfdfc-626e-4a36-8afd-51583c1ff3f1" outputMimeType="text/html" target="emailBody">
+			<xml-module:xslt ><![CDATA[<?xml version="1.0" encoding="UTF-8" ?>
+<xsl:stylesheet version="1.0"
+	xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+	<xsl:template match="/">
+		<HTML>
+			<BODY>
+				<STYLE TYPE="text/css">td{font-family: Arial; font-size: 9pt;font-weight:
+					100;text-align:left;} h4{font-family: Arial; font-size:
+					11pt;font-weight: bold;}
+				</STYLE>
+				<FONT face="calibri">
+					<!--Job Info Start Here -->
+					<xsl:if
+						test="( (normalize-space(/Email/Body/Job/Id) != '') and (normalize-space(/Email/Body/Job/MessageType) != '') )">
+						<h4 style="color:Red">Job Details</h4>
+
+						<table border="3" cellspacing="3" cellpadding="0">
+							<tBody>
+								<tr>
+									<td>Job ID:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/Id" />
+									</td>
+								</tr>
+								<tr>
+									<td>Message Type:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/MessageType" />
+									</td>
+								</tr>
+								
+								<tr>
+									<td>Start Time:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/StartTime" />
+									</td>
+								</tr>
+								
+								<tr>
+									<td>End Time:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/EndTime" />
+									</td>
+								</tr>
+								<tr>
+									<td>Total Count:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/TotalCount" />
+									</td>
+								</tr>
+								<tr>
+									<td>Success Count:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/SuccessCount" />
+									</td>
+								</tr>
+								<tr>
+									<td>Failure Count:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/FailureCount" />
+									</td>
+								</tr>
+								<tr>
+									<td>Status:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/Status" />
+									</td>
+								</tr>
+								<tr>
+									<td>Product SKU:</td>
+									<td>
+										<xsl:value-of disable-output-escaping="yes"
+											select="/Email/Body/Job/ProductSKU" />
+									</td>
+								</tr>
+								<xsl:if test="(normalize-space(/Email/Body/Job/DNumber) != '')">
+									<tr>
+										<td>D Number:</td>
+										<td>
+											<xsl:value-of disable-output-escaping="yes"
+												select="/Email/Body/Job/DNumber" />
+										</td>
+									</tr>
+								</xsl:if>
+								<xsl:if test="(normalize-space(/Email/Body/Job/FileName) != '')">
+									<tr>
+										<td>File Name:</td>
+										<td>
+											<xsl:value-of disable-output-escaping="yes"
+												select="/Email/Body/Job/FileName" />
+										</td>
+									</tr>
+								</xsl:if>
+							</tBody>
+						</table>
+					</xsl:if>
+										
+				</FONT>
+			</BODY>
+		</HTML>
+	</xsl:template>
+</xsl:stylesheet>]]></xml-module:xslt>
+		</xml-module:xslt-transform>
+		<logger level="INFO" doc:name="log_to_console" doc:id="ae8c833c-9bfe-4778-b51b-ab0b93394947" message="&gt;&gt;&gt;&gt; JOB_NOTIFICATION_TRANSFORMED_EMAIL : #[payload]" category="com.rodanandfields.common.utils.payload.trace"/>
+		<ee:transform doc:name="Set Context" doc:id="87942250-d1a0-465c-ba82-21eeb0768c19" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-JobNotificationEmailBefore-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="754ad62f-30b8-406f-a113-b41146a5e7ad" name="logger-before-api-call-flow"/>
+		<ee:transform doc:name="Email Info" doc:id="764d7f78-fb81-415a-b4c6-ac174ef1f229">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+vars.originalMessage.Email.Subject]]></ee:set-variable>
+				<ee:set-variable variableName="emailTo" ><![CDATA[%dw 2.0
+output application/java
+var subject= vars.originalMessage.Email.Subject
+---
+if(subject contains("BOM Notification")) Mule::p('mailgun.api.to.BD30email') else if(subject contains("ESB-CM")) Mule::p('mailgun.api.to.esbCMemail') else Mule::p('mailgun.api.to.notifyemail')]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="send-email-subflow" doc:id="354dc8c2-e2dd-4dce-946c-6a0bbdfe3d54" name="send-email-subflow"/>
+		<ee:transform doc:name="Set Context" doc:id="e38d804c-8e2a-4d48-a600-4b8e3a22f434" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-JobNotificationEmailAfter-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="a4c4c5fc-839d-4941-bded-36fcf1e303d8" name="logger-after-api-call-flow" />
+		<logger level="INFO" doc:name="log_to_console" doc:id="cec02f61-adcd-4475-9f53-20c743e0f737" message="&gt;&gt;&gt;&gt; JOB_NOTIFICATION_EMAIL_RESPONSE : #[payload]" category="com.rodanandfields.common.utils.payload.trace"/>
+		<ee:transform doc:name="Set Context" doc:id="bec82599-0d8e-4b44-b6c3-612ecc639800" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-JobNotificationProcessEnd-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="7960d2d7-ea92-45fb-b4ce-a8557c20f2b6" name="logger-end-process-flow"/>
+	</flow>
+</mule>

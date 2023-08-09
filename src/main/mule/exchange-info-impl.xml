@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<sub-flow name="check-multi-region-subflow" doc:id="ca51dde8-2015-402f-9482-07696aebcf2d" >
+		<ee:transform doc:name="Transform Message" doc:id="71443281-2bd4-4b4e-95d4-7e350f0c7985" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="checkRegionId" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.regionId splitBy ","]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="578e4bb4-83f2-4cb6-83d3-9a15820c47bf" >
+			<when expression="#[sizeOf(vars.checkRegionId) == 1]">
+				<flow-ref doc:name="put-exchangeBindQueueList-info-Subflow" doc:id="f9ee40d2-661d-48dd-8621-39d5aa39edbd" name="put-exchangeBindQueueList-info-Subflow"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="336d3538-d0d5-49f7-a550-ee8ed6ccafbf" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"ErrorCode": 400,
+ 	"ErrorDescription": "The request could missed region or provided multiple regions",
+  	"ExceptionMessage": "Region missed or multiple provided",
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[400]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="get-exchangeBondedQueueList-info-Subflow" doc:id="96da4488-1872-4b2c-be4f-9e3d215053bd" >
+		<set-variable value="get-exchangeBondedQueueList-info-Subflow" doc:name="flowName" doc:id="9520c038-3c78-4112-ab10-df7062a32f2c" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="338b8069-1db5-4ff6-b83f-e13946735c3a" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-GetExchangeBondedQueueLIST-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="765d17e0-3579-4c7c-a57d-b462daaf2874" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="c106aa34-2359-45de-a474-a731a678003a" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToGetExchangeBondedQueueInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="ee7bdab2-364d-4185-8b66-902f46ac6152" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="f23d0230-cb25-4963-9162-e60ff4b2d34a" name="common-retrievetoken-subflow"/>
+		<http:request method="GET" doc:name="GetExchangeQueuesInfo" doc:id="ea865a53-75b2-499b-8d03-d0394b09ce78" config-ref="HTTP_CH_API_Configuration" path="${amq.get.destinations.path}">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Authorization" : vars.access_token,
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"offset" : 0,
+	"startsWith" : "",
+	"limit" : 600
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Exchange List" doc:id="932ed973-c586-4e70-b4fe-e0b89b5f8344" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload filter ($.'type' == "exchange") map {
+	"Type" : $.'type',
+	"Exchange_Name" : $.exchangeId
+}
+ ]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<set-variable value="#[[]]" doc:name="exchangeBondedQueueList" doc:id="bf6e10d8-699f-406a-abff-a9d4cfc2237d" variableName="exchangeBondedQueueList" />
+		<foreach doc:name="For Each" doc:id="aa9d186c-088c-4912-aaec-0a7c22c2f77d" >
+			<ee:transform doc:name="Transform Message" doc:id="da2f1f71-2d65-4732-b479-e1212212542f" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="exchangeName" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.Exchange_Name]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<http:request method="GET" doc:name="GetExchangeBindQueuesInfo" doc:id="193bca86-dbe4-44f6-aea7-a1832930cdc1" config-ref="HTTP_CH_API_Configuration" path="${amq.get.exchange.bind.path}">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Authorization" : vars.access_token,
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"exchangeName" : vars.exchangeName,
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+		</http:request>
+			<ee:transform doc:name="Response" doc:id="7c468529-3593-48b6-999d-81a0897982e3" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "exchangeName": if (sizeOf(payload)>0) payload[0].exchangeId else vars.exchangeName,
+    "boundQueues": if(sizeOf(payload)>0) payload.queueId joinBy  (",") else ""
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Transform Message" doc:id="45acc483-9884-4905-b32e-d5ee6aaa1187" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="exchangeBondedQueueList" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.exchangeBondedQueueList << payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="b13219c9-9812-4029-8fd6-49dd35ab16db" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.exchangeBondedQueueList]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToGetExchangeBondedQueueLISTSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="322d20e3-2981-47f1-aea2-ad67572d3e2f" name="logger-after-api-call-flow" />
+		<choice doc:name="Choice" doc:id="524c99ff-0243-4742-af17-0780389cf3fe" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="Email Info" doc:id="08ca481a-6389-404c-84f0-7d8673c9d587">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.exchangeBindedQueuesList.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.exchangeBindedQueuesList.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="9e51e6e2-6e67-4463-ba1d-00f66dbcb69e" name="email-template-sub-flow"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="ea0483a7-f413-434c-9356-ca4ac6f0611a" message="No Exchanges listed."/>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="b7ecef78-df9b-48f3-8f4e-7415d88d2a30" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-ReceivedExchangeInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="a3baed7a-f919-458b-a204-6a758e2fbc57" name="logger-end-process-flow"/>
+	</sub-flow>
+	<sub-flow name="put-exchangeBindQueueList-info-Subflow" doc:id="be721671-7f1b-4cce-9a4f-2c8665d72822" >
+		<set-variable value="put-exchangeBindQueueList-info-Subflow" doc:name="flowName" doc:id="530d1674-5b3c-40aa-bf00-26e13feebc66" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="13589dbe-bac7-4637-9804-43876bd0d742" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-PUTExchangeBindQueueLIST-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="3cab6769-07fd-4c1f-88ad-6bb6b1f5bab1" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="0f1f6c6b-c1d6-4b27-9d6b-60f22328bc52" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToPutExchangeBindQueueInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="6f4fc748-ba23-4156-86dd-68bd9bc08603" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="c138a544-9f83-46b3-b688-da2d2da768b3" name="common-retrievetoken-subflow"/>
+		<http:request method="GET" doc:name="GetExchangeQueuesInfo" doc:id="4777ca4f-eaca-47c2-8fc2-0c9e3b003882" config-ref="HTTP_CH_API_Configuration" path="${amq.get.destinations.path}">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Authorization" : vars.access_token,
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"offset" : 0,
+	"startsWith" : "",
+	"limit" : 600
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Exchange List" doc:id="d073fc2f-95c0-42e1-829c-0d3905c3794d" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="exchangeList" ><![CDATA[%dw 2.0
+output application/java
+---
+payload filter ($.'type' == "exchange") map {
+	"Type" : $.'type',
+	"Exchange_Name" : $.exchangeId
+}
+ ]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-variable value="#[[]]" doc:name="exchangeListStatus" doc:id="38332f2c-048d-4519-a66e-4b3de08ee8b7" variableName="exchangeListStatus"/>
+		<foreach doc:name="For Each" doc:id="75b08477-65a0-43b4-bce9-e4162e751067" collection="vars.exchangeNames">
+			<ee:transform doc:name="createExchange Flag" doc:id="a956adfb-60f9-4e37-adb0-ee72b8426aad" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="createExchange" ><![CDATA[%dw 2.0
+output application/json
+---
+(!(vars.exchangeList.Exchange_Name contains payload.exchangeName))]]></ee:set-variable>
+					<ee:set-variable variableName="exchangeEachStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<choice doc:name="Choice" doc:id="a7d79ba0-8c81-4a06-b5d0-16ba329faa25" >
+				<when expression="#[vars.createExchange == true]">
+					<http:request method="PUT" doc:name="Create Exchange" doc:id="73e6a22d-40e7-43f4-8aaf-88845dec3e58" config-ref="HTTP_CH_API_Configuration" path="${amq.put.exchange.path}">
+						<http:body><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+"encrypted": false
+}]]]></http:body>
+						<http:headers><![CDATA[#[output application/java
+---
+{
+	
+	"Authorization" : "Bearer " ++ vars.access_token,
+	
+}]]]></http:headers>
+						<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"exchangeName" : payload.exchangeName,
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+					</http:request>
+					<ee:transform doc:name="Status" doc:id="1a45446b-90b4-4fb3-8c43-b62087b69c8f">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="exchangeName"><![CDATA[%dw 2.0
+output application/java
+---
+payload.exchangeId]]></ee:set-variable>
+							<ee:set-variable variableName="exchangeListStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.exchangeListStatus << (vars.exchangeEachStatus ++ {"exchangeStatus": if (attributes.statusCode == 201) "Created" else "Creation Failed"})]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<set-variable value="#[[]]" doc:name="bondedQueueList" doc:id="d9f101fb-d330-4b2e-b2bf-52fc6be05d78" variableName="bondedQueueList"/>
+				</when>
+				<otherwise >
+					<ee:transform doc:name="Status" doc:id="9f63b759-a23c-473d-88a1-900c74b0537e" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"exchangeId":payload.exchangeName
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="exchangeName" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.exchangeName]]></ee:set-variable>
+							<ee:set-variable variableName="exchangeListStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.exchangeListStatus << (vars.exchangeEachStatus ++ {"exchangeStatus": "Existing"})]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<http:request method="GET" doc:name="GetExchangeBindQueuesInfo" doc:id="eeed13ad-7e2c-4c5f-a5aa-0851c6cebac0" config-ref="HTTP_CH_API_Configuration" path="${amq.get.exchange.bind.path}">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Authorization" : vars.access_token,
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"exchangeName" : vars.exchangeName,
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+		</http:request>
+					<ee:transform doc:name="Transform Message" doc:id="052ddea2-829b-4638-b3ce-95bd3cd66dc4">
+						<ee:message>
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "exchangeId": payload.exchangeId[0]
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="bondedQueueList" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.queueId]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+				</otherwise>
+			</choice>
+					<ee:transform doc:name="Transform Message" doc:id="f46e521b-eb84-4190-a8d1-c4d2c2b79b0a">
+						<ee:message>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="queueNames"><![CDATA[%dw 2.0
+output application/json
+---
+flatten(vars.originalPayload filter($.exchangeName == payload.exchangeId) map{
+    "queueNames": $.bindQueues splitBy ","
+}.queueNames)]]></ee:set-variable>
+							<ee:set-variable variableName="emailFlag"><![CDATA[%dw 2.0
+output application/java
+---
+false]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<flow-ref doc:name="get-queue-info-subflow" doc:id="edffcccb-d9fe-4b05-9c5f-72a50aa02c76" name="get-queue-info-subflow" />
+						<ee:transform doc:name="Transform Message" doc:id="5d637773-2f99-44c3-8fd5-93cf58dd2092" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload reduce (item, acc = []) -> if (!(vars.bondedQueueList contains item.QueueName))acc + item else acc]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<foreach doc:name="For Each" doc:id="095bd96a-16aa-45b9-a1be-08a1e65350d8">
+						<http:request method="PUT" doc:name="Bind Queue to Exchange" doc:id="4301ac7b-0737-48e3-a9eb-2344088cbb8e" config-ref="HTTP_CH_API_Configuration" path="${amq.put.bind.exchange.path}">
+						<http:body><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+"encrypted": false
+}]]]></http:body>
+						<http:headers><![CDATA[#[output application/java
+---
+{
+	
+	"Authorization" : "Bearer " ++ vars.access_token,
+	
+}]]]></http:headers>
+						<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"exchangeName" : vars.exchangeName,
+	"queueName" : payload.QueueName,
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+					</http:request>
+					</foreach>
+					</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="442be544-507b-4399-8a37-c7b30ec1e3bd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.exchangeListStatus]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToCreateExchangeSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="1768b730-2b6f-4dd2-aa29-4bad55658c85" name="logger-after-api-call-flow" />
+		<choice doc:name="Choice" doc:id="4bb1a885-05a1-4646-a449-165985c955c2" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="Email Info" doc:id="bf2b02e5-4705-4e1b-8553-90149cc1db7f">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.upsertExchangeBindedQueuesList.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.upsertExchangeBindedQueuesList.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="8a6e1499-9417-4642-bc14-3caf827fc8d6" name="email-template-sub-flow"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="b9d1cae2-8869-4a8d-be8c-f5f9276f2db7" message="No Exchanges listed."/>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="11443506-6fcc-4f74-a2ac-384e2e55bf8f" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-PutExchangeBindedQueueListResponse-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="76bccb4b-31f2-4cc1-a0aa-6f77d7c516a0" name="logger-end-process-flow"/>
+	</sub-flow>
+</mule>

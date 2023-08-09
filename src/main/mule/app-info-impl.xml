@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="get-app-info-subflow" doc:id="f154f94e-d6ba-4739-a15e-9bc01920fb0b" >
+		<set-variable value="get-app-info-subflow" doc:name="Set Variable" doc:id="839f00c9-048c-414d-bce5-c77c7380dfde" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="9c0eac39-e2d9-4523-ac64-d324c1f6e516" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-GetAPPInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="3b1bb08d-7703-4dad-aada-c4d3c240df13" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="386d7d32-fa56-4348-b178-86f93ee0f77e" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointRuntimeAPIToGetAPPInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="b3d0b7d3-0d3c-44fe-9562-73a5822da405" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="bd7d09b7-f29d-4de3-bcad-5e0d9cd9dbe4" name="common-retrievetoken-subflow"/>
+		<http:request method="GET" doc:name="Request Runtime API" doc:id="78c41559-7d8f-4861-8285-3fecff9c686c" config-ref="HTTP_CH_API_Configuration" path="${ch.api.apps.path}">
+		<http:headers ><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : Mule::p('ch.api.envId'),
+	"Authorization" : "Bearer " ++ vars.access_token,
+	"X-ANYPNT-ORG-ID" : Mule::p('ch.api.orgId')
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="55df128a-2a53-4bbd-8be3-92944145e4cd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+(payload filter ((vars.appNames contains $.domain) and (vars.regionId contains $.region) ) ) map {
+  "appName" : $.domain,
+  "appStatus" : $.status,
+  "lastUpdateTime" :  ($.lastUpdateTime as Number/1000) as DateTime as String {format:"MMM dd,yyyy HH:mm:ss"},
+  "muleVersion" : $.muleVersion.version,
+  "workers" : $.workers.amount,
+  "workerCpu"  : $.workers."type".cpu,
+  "region" : $.region
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointRuntimeAPIToGetAPPInfoSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="b652b8ad-cc27-4826-990f-22910cf12e72" name="logger-after-api-call-flow" />
+		<choice doc:name="Choice" doc:id="58aac77d-88be-4f83-a216-ec66749a1fe1">
+			<when expression="#[sizeOf(payload) &gt; 0]">
+			<ee:transform doc:name="Email Info" doc:id="4ffb128f-da41-42fe-958b-de48db114d22">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.appsInfo.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.appsInfo.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns"><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="240ce1c6-27b4-4bab-a6f4-387705bcd344" name="email-template-sub-flow" />
+				<ee:transform doc:name="Transform Message" doc:id="1fe1c872-a9b1-4349-869d-a8ef3e8aaf78">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.tableReport]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="1779c84c-e995-4740-a6f1-238308dc5f3a" />
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="70e0ad3e-15bc-4c01-8a90-28e35bfad547" name="logger-end-process-flow"/>
+	</sub-flow>
+	<sub-flow name="get-app-List-subflow" doc:id="ce32e82a-99aa-45a3-9458-ad05dfe49dcf" >
+		<set-variable value="get-app-List-subflow" doc:name="Set Variable" doc:id="5c4f8bba-8562-4833-bde6-2f873a7d9dc0" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="507f815a-78d1-4a36-9cca-aa5d83900d8d" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-GetAPPLIST-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="6826039f-36e8-4828-9990-562e0f7df17b" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="34bb50e8-86fe-413d-9609-b40ab16c2bf6" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-CallAnypointRuntimeAPIToGetAPPLIST-API"]]></ee:set-variable>
+				<ee:set-variable variableName="envid" ><![CDATA[%dw 2.0
+output application/java
+---
+if(payload.region == "us-west-1")   Mule::p('ch.api.envId')
+else if(payload.region == "us-west-2") Mule::p('ch.api.envId2')
+else ""
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="5af19483-d808-4472-90a6-805d04b0b0ee" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="91ac0531-3385-4419-8336-937af8fdcac6" name="common-retrievetoken-subflow"/>
+		<http:request method="GET" doc:name="Request Runtime API" doc:id="e09d67d5-11ef-4db2-b624-3e0ba1033e80" config-ref="HTTP_CH_API_Configuration" path="${ch.api.apps.path}">
+		<http:headers ><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : vars.envid,
+	"Authorization" : "Bearer " ++ vars.access_token,
+	"X-ANYPNT-ORG-ID" : Mule::p('ch.api.orgId')
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="2dd029e0-9d73-4189-a735-41f9a53748b9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload  map {
+  "appName" : $.domain,
+  "Status" : $.status,
+  "muleVersion" : $.muleVersion.version,
+  "workers" : $.workers.amount,
+  "workerCpu"  : $.workers."type".cpu,
+  "region" : $.region,
+  "DisableCloudhubLog"  : $.loggingCustomLog4JEnabled,
+  "staticIPsEnabled" : $.staticIPsEnabled
+ }
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-CallAnypointRuntimeAPIToGetAPPLISTSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="edcec93b-5b62-4902-863e-e8a68a8f9233" name="logger-after-api-call-flow"/>
+		<choice doc:name="Choice" doc:id="7e9f58ee-2db9-4d8b-b03b-ee2ad952ef47">
+			<when expression="#[sizeOf(payload) &gt; 0]">
+			<ee:transform doc:name="Email Info" doc:id="15fa4c61-4f87-4991-afe9-32c725776de9">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.appsList.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.appsList.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns"><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="4f78e272-4e55-4109-a469-e60708d696e7" name="email-template-sub-flow" />
+				<ee:transform doc:name="Transform Message" doc:id="a99eb20e-3540-4b23-a4cc-d88cbbd4dd73">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.tableReport]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="796cae90-fa7b-4c09-986e-02b115abae36" />
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="cbfd8fe0-6522-4636-b559-74e9cea6768c" name="logger-end-process-flow"/>
+	</sub-flow>
+	<sub-flow name="post-app-start-stop-subflow" doc:id="c23a9795-6205-4dfe-b2a7-72d60d29a761" >
+		<set-variable value="post-app-stop-subflow" doc:name="Set Variable" doc:id="85d6f206-4bb2-4ae9-ae99-fe011e32fb0c" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="72c99666-d2b2-4d6e-bcae-b12437eadd94" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'stop') "CommonUtilityAPI-StopApps-API"
+else if (vars.operation == 'restart') "CommonUtilityAPI-RestartApps-API"
+else "CommonUtilityAPI-StartApps-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="ae38c291-e15a-4a31-84e7-823b2c103525" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="f9720991-058e-4c8a-9534-3c5efb2153bd" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'stop') "CommonUtilityAPI-CallAnypointApiToStopApps-API"
+else if (vars.operation == 'restart') "CommonUtilityAPI-CallAnypointApiToRestartApps-API"
+else "CommonUtilityAPI-CallAnypointApiToStartApps-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="dd8c4a1d-aff4-4e01-8504-c258be53a844" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="e9420a98-ddd1-4ca7-ac9d-a396a3be1425" name="common-retrievetoken-subflow"/>
+		<foreach doc:name="For Each" doc:id="bca7e07c-1047-4446-b37f-df78612fc973" collection="#[vars.appNames]">
+			<try doc:name="Try" doc:id="99556e39-2362-4db3-b612-6bf17383c275" >
+				<http:request method="POST" doc:name="Request Runtime API" doc:id="13b773d7-4fd5-4bcc-8890-a41da3293e32" config-ref="HTTP_CH_API_Configuration" path="${ch.api.appsstopstart.path}">
+		<http:body><![CDATA[#[output application/json
+---
+{
+	"status": vars.operation
+}]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : Mule::p('ch.api.envId'),
+	"Authorization" : "Bearer " ++ vars.access_token,
+	"X-ANYPNT-ORG-ID" : Mule::p('ch.api.orgId')
+}]]]></http:headers>
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"appName" : payload
+}]]]></http:uri-params>
+		</http:request>
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="a9e073ea-0849-41ed-99c2-1f0c8c9d07fc" type="HTTP:NOT_FOUND">
+						<set-payload value="'NOT_FOUND'" doc:name="Set Payload" doc:id="c038e8d0-1832-45f7-a9f5-4b8b0a52526c" />
+					</on-error-continue>
+				</error-handler>
+			</try>
+			<ee:transform doc:name="Transform Message" doc:id="130e9e9c-40b7-4be1-9f01-e9c5d9ed9c2f" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="responsePayload" ><![CDATA[%dw 2.0
+output application/json
+var operationStatus = if ( vars.operation == 'stop' ) 'stopped'  else 'started'
+---
+vars.responsePayload ++ [{
+	appName: vars.appNames[vars.counter-1],
+	status: if ( attributes.statusCode == 200 ) (upper(operationStatus))  else (if ( attributes.statusCode == 304 ) 'Not Modified' else payload)
+}]]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="f4a238e5-ea75-4ec4-8e33-771ffacd22dc" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'stop') "CommonUtilityAPI-CallAnypointApiToStopAppsSuccess-API"
+else if (vars.operation == 'restart') "CommonUtilityAPI-CallAnypointApiToRestartAppsSuccess-API"
+else "CommonUtilityAPI-CallAnypointApiToStartAppsSuccess-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="4d1e6674-f586-4843-ba3d-d31f63667f7b" name="logger-after-api-call-flow" />
+		
+		<ee:transform doc:name="Transform Message" doc:id="7605973c-c956-4821-b4eb-0b0532bed614" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.responsePayload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="a016e7dd-56ca-4a87-b3df-5ab0fd1f800d">
+			<when expression="#[sizeOf(payload) &gt; 0]">
+			<ee:transform doc:name="Email Info" doc:id="4336e21b-235a-4fe8-8621-608faf8a7f57">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.appsInfo.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.appsInfo.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="email-template-sub-flow" doc:id="fd32eb3e-f51f-44c2-ad29-7c2034b65f3e" name="email-template-sub-flow" />
+				<ee:transform doc:name="Transform Message" doc:id="c4e15ec3-0d53-4ac7-ac26-52be01e156df">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.tableReport]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="06a190a5-98c5-4078-9aa0-7599300f8fe8" />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="6938b8a0-34e5-4d85-8b0e-834b856257ae" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'stop') "CommonUtilityAPI-StoppedApps-API"
+else if (vars.operation == 'restart') "CommonUtilityAPI-RestartedApps-API"
+else "CommonUtilityAPI-StartedApps-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="2d1baa1b-93bc-458c-b6e6-d8005a553993" name="logger-end-process-flow"/>
+	</sub-flow>
+</mule>

@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="get-queue-info-subflow" doc:id="b41af7d3-8f7b-4be3-8ef9-a2e85967d16b" >
+		<set-variable value="get-queue-info-subflow" doc:name="Set Variable" doc:id="6f9a72f4-e310-4018-86ea-ece69fe67c4a" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="243536cc-fda8-48e1-89ff-e7a723154b3e" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-GetQueueInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="e8d3f4fb-20cc-4f87-b0e5-ec96fd023b77" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="dc5e78d5-c64b-4cef-b68c-8d55aa48fd9e" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToGetQueueInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="93fbe119-0dc2-49ae-a98a-766ca33dba36" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="aa46ce10-f66b-42cc-bc86-53fe23f64ffe" name="common-retrievetoken-subflow"/>
+		<http:request method="GET" doc:name="GetQueuesInfo" doc:id="41e3f789-cb72-4083-af0c-1e3005982ef1" config-ref="HTTP_CH_API_Configuration" path="${amq.get.destinations.path}">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Authorization" : vars.access_token,
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="49146171-c6cf-4c40-856d-f47a58fbbf23" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="queueList" ><![CDATA[%dw 2.0
+output application/json
+---
+(payload filter (vars.queueNames contains $.queueId) ) map {
+  "QueueName" : $.queueId,
+  "QueueStatus" : "Existing"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="1ccab62a-55f0-4cb8-80d9-524ff146fb8b" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToGetQueueInfoSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="c71da6de-409c-4a1b-93f9-5e5c3dc2cd96" name="logger-after-api-call-flow" />
+		<ee:transform doc:name="Transform Message" doc:id="1c4a984f-22f2-4f0a-a650-d5d28ef25f2f" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="createList" ><![CDATA[%dw 2.0
+output application/json
+---
+((vars.queueNames) -- (vars.queueList."QueueName" default []))]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="20773c8f-f5fe-4cd2-ab1f-4473cdcbc093" >
+			<when expression="#[sizeOf(vars.createList) &gt; 0]">
+				<flow-ref doc:name="create-queue-subflow" doc:id="46d9c319-5d7d-41f7-9c02-ac1830809ee3" name="create-queue-subflow"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="760362f0-eb58-4143-88e4-57c5154cf9e8" message="List of queues #[vars.queueList]"/>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="db7b6028-aac7-46af-962c-ef80ba4eaa08">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.queueList]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="0b41f4eb-0fc2-4731-acb9-3fd958f85e51" >
+			<when expression="#[vars.emailFlag == false]">
+				<logger level="INFO" doc:name="Logger" doc:id="804a9bda-6ddb-43fe-86a4-a58953738ca4" message="Email Flag is false"/>
+			</when>
+			<otherwise >
+				<choice doc:name="Choice" doc:id="2d792b04-37fe-4cfa-a761-fcbfbddb39e8">
+			<when expression="#[sizeOf(vars.queueList) &gt; 0]">
+				<ee:transform doc:name="Email Info" doc:id="e81ad15c-17ab-4127-ba3f-fc863225add7">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.queuesInfo.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.queuesInfo.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns"><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="ff4e720e-147a-43c9-9697-347d05a2200a" name="email-template-sub-flow" />
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="5474c30e-d561-42c6-b5f1-699eed9c32c0" message="No queues listed." />
+			</otherwise>
+		</choice>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="dc5cf658-5cf4-4dc7-b838-c9a75aa127eb" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-ReceivedQueueInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="8b1abbdd-098d-4201-9f18-b53ca66ae3bd" name="logger-end-process-flow"/>
+	</sub-flow>
+	<sub-flow name="queueList-info-Subflow" doc:id="3e0cbdb5-65d8-46db-a325-dd6b631e0c20" >
+		<set-variable value="queueList-info-Subflow" doc:name="Set Variable" doc:id="41750c5a-3d85-439b-90fb-fb16bb034daa" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="7341a800-e761-40c9-afdf-00a53a20d50d" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-GetQueueLIST-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="67e81853-09a9-4c8b-ad78-3336e679ae7b" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="7e91035b-676b-41a2-8261-4ebab27c53a3" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToGetQueueInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="ead904d1-0fa0-4584-99bc-b1d8d55d6d49" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="689c95fc-fe6c-493f-bbd5-8bfb17a4851b" name="common-retrievetoken-subflow"/>
+		<http:request method="GET" doc:name="GetQueuesInfo" doc:id="2cf0bccf-12d6-46db-ba35-c3a6c0672e55" config-ref="HTTP_CH_API_Configuration" path="${amq.get.destinations.path}">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Authorization" : vars.access_token,
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"regionId" : vars.regionId,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="b1eebca3-4436-4cd1-9f0c-f6a24e19f3f1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+"Type" : $.'type',
+"Queue/Exchange_Name" : if($.queueId != null)$.queueId else $.exchangeId
+}
+ ]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="cf0953e1-3c66-4a1d-abd2-6cf69a2d3f3e" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToGetQueueLISTSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="b124bb49-389d-4d44-94f3-ea28bf8477ba" name="logger-after-api-call-flow" />
+		<choice doc:name="Choice" doc:id="9cf04a34-9cab-4378-b26b-314912d72701" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="Email Info" doc:id="8c30c209-b952-44e4-9916-c895cfd3851f">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.queuesList.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.queuesList.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="340b8b7f-a9ce-4436-820d-43eb1b660c00" name="email-template-sub-flow"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="162a1a93-0ee6-4b9e-b3f7-8a199e7b7dea" message="No queues listed."/>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="bd1f56ce-6b8c-4a68-89d9-aa8975b65689" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-ReceivedQueueInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="acd230b0-d608-4189-9b6a-7bc283c2fc3f" name="logger-end-process-flow"/>
+		</sub-flow>
+	<sub-flow name="create-queue-subflow" doc:id="d9b05df4-542d-4781-8dd6-6874be7dac40" >
+		<set-variable value="create-queue-subflow" doc:name="Set Variable" doc:id="f65e547d-3c19-494d-b75e-a502675da5af" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="eeb774b9-e887-44dc-9fac-5433d85f8907" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToCreateQueue-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="5df7f5b2-7eb2-494e-aa48-3635172864cf" name="logger-before-api-call-flow"/>
+		<foreach doc:name="For Each" doc:id="2afe1329-294e-4ec8-941a-4a9f292b084a" collection="#[vars.createList]">
+			<http:request method="PUT" doc:name="Request" doc:id="fd39b9ba-9cef-442d-b738-d60e6ba84521" config-ref="HTTP_CH_API_Configuration" path="${amq.put.queue.path}">
+		<http:body><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+"defaultTtl": Mule::p('queue.defaultTtl'),
+"defaultLockTtl":  Mule::p('queue.defaultLockTtl'),
+"type": "queue",
+"encrypted": false
+}]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	
+	"Authorization" : "Bearer " ++ vars.access_token,
+	
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"regionId" : vars.regionId,
+	"queueName" : payload,
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+		</http:request>
+			<ee:transform doc:name="Transform Message" doc:id="e475d70e-d203-48fb-b57e-0e0a9e22aa76" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="queueList" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.queueList << {
+	"QueueName":payload.queueId,
+	"QueueStatus": if (attributes.statusCode == 201) "Created"  else "Creation Failed" 
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="541ea935-f08d-493a-a8dd-54ce2e83140f" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointMQAPIToCreateQueueSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="2f00a0ac-e28e-4ba2-8da7-76cea5910d47" name="logger-after-api-call-flow" />
+	</sub-flow>
+</mule>

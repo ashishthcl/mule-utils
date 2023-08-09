@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+    <flow name="common-utlity-api-main">
+        <http:listener config-ref="common-utlity-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <ee:transform doc:id="4cfbc48f-7f63-456f-868e-0c2322355c47" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="originatingApplication"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('originating.application')]]></ee:set-variable>
+                <ee:set-variable variableName="destinationApplication"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('destination.application')]]></ee:set-variable>
+                <ee:set-variable variableName="path"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.requestPath]]></ee:set-variable>
+                <ee:set-variable variableName="bussinessProcessName"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('business.process.name')]]></ee:set-variable>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('flow.name')]]></ee:set-variable>
+                <ee:set-variable variableName="service"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('service')]]></ee:set-variable>
+				<ee:set-variable variableName="originalPayload" ><![CDATA[%dw 2.0
+output application/json
+---
+payload default ""]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="generate-messageId-and-transactionId-subflow" doc:id="fbf8cf21-4c5a-4de5-91f6-6add12b5f0b5" name="generate-messageId-and-transactionId-subflow" />
+        <apikit:router config-ref="common-utlity-api-config" />
+    </flow>
+    <flow name="common-utlity-api-console">
+        <http:listener config-ref="common-utlity-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="common-utlity-api-config" />
+    </flow>
+    <flow name="put:\v1\amq\status:application\json:common-utlity-api-config">
+        <ee:transform doc:id="079d264e-6b33-4384-bf46-8b6721bcdcbf" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="regionId"><![CDATA[%dw 2.0
+output application/java
+---
+if (not isEmpty(payload.region)) payload.region else Mule::p('ch.amq.us.west2.region')]]></ee:set-variable>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\amq\status"]]></ee:set-variable>
+                <ee:set-variable variableName="queueNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.queueNames splitBy  (",")]]></ee:set-variable>
+				<ee:set-variable variableName="emailFlag" ><![CDATA[%dw 2.0
+output application/java
+---
+true]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="bd926371-4160-4727-870a-980673dc31d6">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"QueueNames : " ++ (payload.queueNames default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context2"><![CDATA[%dw 2.0
+output application/java
+---
+"Region : " ++ (vars.regionId default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToGetQueueInfo-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="209da8df-5cb8-4baa-a1bd-417380b4068d" name="logger-api-start-flow" />
+        <flow-ref doc:name="get-queue-info-subflow" doc:id="d531eb98-a240-4a71-aa97-80b5fb0ca8f6" name="get-queue-info-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="1a6ca4f5-1839-40f6-925d-5a765ca3d154" name="logger-api-end-flow" />
+    </flow>
+    <flow name="get:\v1\apps\status:application\json:common-utlity-api-config">
+        <ee:transform doc:id="bf42ec85-2745-421c-8521-a542f00bf71a" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames splitBy  (",")]]></ee:set-variable>
+                <ee:set-variable variableName="regionId"><![CDATA[%dw 2.0
+output application/java
+---
+payload.region]]></ee:set-variable>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\apps\status"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="9616f5d1-088b-4ce6-9ced-a29215c0669c">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"AppNames : " ++ (payload.appNames default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context2"><![CDATA[%dw 2.0
+output application/java
+---
+"Region : " ++ (vars.regionId default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToGetAPPInfo-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="69a5668b-ec90-43d6-bc5b-393e8ccae0f3" name="logger-api-start-flow" />
+        <flow-ref doc:name="get-app-info-subflow" doc:id="6f153dce-a39f-43e4-ad01-8592ae12cac0" name="get-app-info-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="dab2e75b-50ec-46f4-96fd-28fcb394b4fa" name="logger-api-end-flow" />
+    </flow>
+    <flow name="get:\v1\amq\list:application\json:common-utlity-api-config" doc:id="c6477d3a-d331-4be3-910f-34c29a2d052e" >
+		<ee:transform doc:name="Set Properties" doc:id="cb85c709-6603-4449-90fd-cfb0599a289c" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="flowName" ><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\amq\list"]]></ee:set-variable>
+				<ee:set-variable variableName="regionId" ><![CDATA[%dw 2.0
+output application/java
+---
+if (not isEmpty(payload.region)) payload.region else Mule::p('ch.amq.us.west2.region')
+]]></ee:set-variable>
+			
+</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set Context9" doc:id="223ae866-fa80-4af2-8cdb-22af0c5bd772" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-ReceivedRequestToGetQueueInfo-API"
+]]></ee:set-variable>
+				<ee:set-variable variableName="context1" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.regionId]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-api-start-flow" doc:id="46ae1c3c-88a2-4034-89bf-6b9777c9824e" name="logger-api-start-flow"/>
+		<flow-ref doc:name="get queue List Subflow" doc:id="e35c62a3-6c10-40ee-9fa4-f8e816d3fe48" name="queueList-info-Subflow"/>
+		<flow-ref doc:name="logger-api-end-flow" doc:id="440a06c0-bf9a-4790-a1f2-188fe7a4c6d5" name="logger-api-end-flow"/>
+	</flow>
+	<flow name="get:\v1\amq\exchange\list:common-utlity-api-config" doc:id="be49f0fa-995d-4942-8dc0-c82f1904a79e" >
+		<ee:transform doc:name="Set Properties" doc:id="471271b0-5c43-44ed-9158-ef91db18d910" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="flowName" ><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\amq\exchange\list"]]></ee:set-variable>
+				<ee:set-variable variableName="regionId" ><![CDATA[%dw 2.0
+output application/java
+---
+if (not isEmpty(payload.region)) payload.region else Mule::p('ch.amq.us.west2.region')
+]]></ee:set-variable>
+			
+</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set Context9" doc:id="48cfc7a3-d273-46cf-88c4-7ddfec5db4a8" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-ReceivedRequestToGetExchangeBondedQueueInfo-API"
+]]></ee:set-variable>
+				<ee:set-variable variableName="context1" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.regionId]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-api-start-flow" doc:id="92f31316-38aa-49b6-81b6-731bf1ff2fda" name="logger-api-start-flow"/>
+		<flow-ref doc:name="get exchangeBondedQueue List Subflow" doc:id="b8e517c1-9dcd-4e94-98cb-36b375282b83" name="get-exchangeBondedQueueList-info-Subflow"/>
+		<flow-ref doc:name="logger-api-end-flow" doc:id="a8993d3a-dc65-413a-a5c5-54dfbeea3eb0" name="logger-api-end-flow"/>
+	</flow>
+	<flow name="put:\v1\amq\exchange:application\json:common-utlity-api-config">
+        <ee:transform doc:id="cdc4ef15-e8b2-42c9-96a1-3ccf61819e0f" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="regionId"><![CDATA[%dw 2.0
+output application/java
+---
+if (not isEmpty(payload.region)) payload.region distinctBy ((item, index) -> item) joinBy "," else Mule::p('ch.amq.us.west2.region')]]></ee:set-variable>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\amq\exchange"]]></ee:set-variable>
+				<ee:set-variable variableName="exchangeNames" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context9" doc:id="4f225b35-e98b-4db4-8c2b-7a3ca259141a">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToExchaneBindQueueInfo-API"]]></ee:set-variable>
+				<ee:set-variable variableName="context1" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.regionId]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="a4158ff5-897f-4d9c-adcf-b94d95fe62da" name="logger-api-start-flow" />
+        <flow-ref doc:name="check-multi-region-subflow" doc:id="1f27a031-74c5-4663-9b0b-802190dc5f24" name="check-multi-region-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="0c4e9126-8e80-4bc5-8de1-4161ccd76c74" name="logger-api-end-flow" />
+    </flow>
+	<flow name="get:\v1\apps\list:application\json:common-utlity-api-config" doc:id="9bdcacdd-88b8-4737-afb9-81419a5a1d03" >
+		<ee:transform doc:name="Transform Message" doc:id="2086706d-0399-4c53-a7cc-7f38b794a790" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="flowName" ><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\apps\list"]]></ee:set-variable>
+				<ee:set-variable variableName="regionId" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.region]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="ba60008f-c15e-41d8-8f3b-51ba5fe74226" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-ReceivedRequestToGetAppsList-API"
+]]></ee:set-variable>
+				<ee:set-variable variableName="context2" ><![CDATA[%dw 2.0
+output application/java
+---
+"Region : " ++ (vars.regionId default '')]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-api-start-flow" doc:id="9007e160-2d75-4f06-97b4-5ad53dfe48b7" name="logger-api-start-flow"/>
+		<flow-ref doc:name="get-app-List-subflow" doc:id="9c8002ee-0d72-49c1-9ec8-825c70a81994" name="get-app-List-subflow"/>
+		<flow-ref doc:name="logger-api-end-flow" doc:id="499ac67c-ddae-4219-90d0-5474e27551fe" name="logger-api-end-flow"/>
+	</flow>
+	<flow name="post:\v1\apps\start:application\json:common-utlity-api-config">
+        <ee:transform doc:id="90c58c7c-a3f1-4614-8049-3a322ec9779a" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="operation"><![CDATA[output application/java --- ((attributes.requestPath default "") splitBy("/"))[-1]]]></ee:set-variable>
+                <ee:set-variable variableName="responsePayload"><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames splitBy  (",")]]></ee:set-variable>
+                <ee:set-variable variableName="regionId"><![CDATA[%dw 2.0
+output application/java
+---
+payload.region]]></ee:set-variable>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\apps\start"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="fb9d31b7-00ad-47a6-8914-6975da455773">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"AppNames : " ++ (payload.appNames default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToStartApps-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="a41e6a08-a736-4b3e-baf7-0d318fd7b08a" name="logger-api-start-flow" />
+        <flow-ref doc:name="post-app-start-stop-subflow" doc:id="be07e650-ae5b-46b0-86ee-24169f93d2c6" name="post-app-start-stop-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="903a6f35-ca72-4377-8f79-ce0560a60189" name="logger-api-end-flow" />
+    </flow>
+    <flow name="post:\v1\apps\stop:application\json:common-utlity-api-config">
+        <ee:transform doc:id="0d43645b-f696-4f3e-98f2-ed8aec21777d" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="operation"><![CDATA[output application/java --- ((attributes.requestPath default "") splitBy("/"))[-1]]]></ee:set-variable>
+                <ee:set-variable variableName="responsePayload"><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames splitBy  (",")]]></ee:set-variable>
+                <ee:set-variable variableName="regionId"><![CDATA[%dw 2.0
+output application/java
+---
+payload.region]]></ee:set-variable>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\apps\stop"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="d86badcb-7769-4ac8-bc7f-9aaef35ea404">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"AppNames : " ++ (payload.appNames default '')]]></ee:set-variable>
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-ReceivedRequestToStopApps-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="07cedcc8-b432-4462-9623-ac9e17f23bfa" name="logger-api-start-flow" />
+        <flow-ref doc:name="post-app-start-stop-subflow" doc:id="62455748-3b0f-485d-9bb1-df7ed17a555b" name="post-app-start-stop-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="6e21684a-3b96-400d-a9e8-01f939e71283" name="logger-api-end-flow" />
+    </flow>
+    <flow name="post:\v1\apps\restart:application\json:common-utlity-api-config">
+       <ee:transform doc:id="cae99cd6-4eee-4b60-8072-e0ae1af4cbda" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="operation"><![CDATA[output application/java --- ((attributes.requestPath default "") splitBy("/"))[-1]]]></ee:set-variable>
+                <ee:set-variable variableName="responsePayload"><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames splitBy  (",")]]></ee:set-variable>
+                <ee:set-variable variableName="regionId"><![CDATA[%dw 2.0
+output application/java
+---
+payload.region]]></ee:set-variable>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\apps\restart"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="3c5211cb-7bd9-4621-8ad2-606ab150996a">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"AppNames : " ++ (payload.appNames default '')]]></ee:set-variable>
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-ReceivedRequestToRestartApps-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="e037705d-ec16-467a-a035-54b54a4864f6" name="logger-api-start-flow" />
+        <flow-ref doc:name="post-app-start-stop-subflow" doc:id="3550c827-89bf-4779-870d-1404cc1b376b" name="post-app-start-stop-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="16f57084-1389-4422-9ea2-5983f868439f" name="logger-api-end-flow" />
+    </flow>
+    <flow name="get:\v1\api\status:application\json:common-utlity-api-config">
+        <ee:transform doc:id="f11f024f-b9dd-436c-820f-03bcde3ecce1" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <!-- <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+-&#45;&#45;
+payload.appNames splitBy  (",")]]></ee:set-variable> -->
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\api\status"]]></ee:set-variable>
+                <ee:set-variable variableName="apiNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.apiNames splitBy  (",") default []]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<ee:transform doc:name="Set Context" doc:id="60414add-64fb-480e-87b7-c83ae6fcd589">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"apiNames : " ++ (payload.apiNames default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToGetAPIInfo-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<flow-ref doc:name="logger-api-start-flow" doc:id="88fcb2ac-16db-4770-80e4-1d1bd6f8cb1e" name="logger-api-start-flow" />
+		<flow-ref doc:name="get-api-info-subflow" doc:id="e2b0d64a-a54f-4199-815b-dabb3130d66e" name="get-api-info-subflow" />
+		<flow-ref doc:name="logger-api-end-flow" doc:id="ef893d5d-b34f-431d-bb3e-f2bf127666e7" name="logger-api-end-flow" />
+    </flow>
+    <flow name="put:\v1\scheduler\disable:application\json:common-utlity-api-config">
+        <ee:transform doc:id="b3f2c1f8-e1a4-4c75-858d-d92e1aecc403" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <!-- <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+-&#45;&#45;
+payload.appNames splitBy  (",")]]></ee:set-variable> -->
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\scheduler\disable"]]></ee:set-variable>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames.appName default []]]></ee:set-variable>
+                <ee:set-variable variableName="inputData"><![CDATA[%dw 2.0
+output application/json
+---
+payload.appNames map{
+    appName : $.appName,
+    schedulerNames: $.schedulerNames splitBy  ","}]]></ee:set-variable>
+                <ee:set-variable variableName="operation"><![CDATA["disable"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="05c2cb71-bb65-4b6b-a0e1-0cdb30756550">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"appNames : " ++ (payload.appNames.appName reduce ($ ++ "," ++ $$) default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToGetSchedulerStatusInfo-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="89c4eba6-26d7-4128-9d29-f20c3d6d4bd5" name="logger-api-start-flow" />
+        <flow-ref doc:name="put-scheduler-info-subflow" doc:id="b5cf6bac-1d3d-4004-81bc-023830d6af12" name="put-scheduler-start-stop-subflow" />
+         <flow-ref doc:name="logger-api-end-flow" doc:id="783f95cc-8799-4d26-b8d5-1b593ba010d9" name="logger-api-end-flow" />
+    </flow>
+    <flow name="put:\v1\scheduler\enable:application\json:common-utlity-api-config">
+        <ee:transform doc:id="6b26da8e-0b06-4e39-bbb5-968f8a0b24a6" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <!-- <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+-&#45;&#45;
+payload.appNames splitBy  (",")]]></ee:set-variable> -->
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\scheduler\enable"]]></ee:set-variable>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames.appName default []]]></ee:set-variable>
+                <ee:set-variable variableName="inputData"><![CDATA[%dw 2.0
+output application/json
+---
+payload.appNames map{
+    appName : $.appName,
+    schedulerNames: $.schedulerNames splitBy  ","}]]></ee:set-variable>
+                <ee:set-variable variableName="operation"><![CDATA["enable"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="bf66a50b-dba3-4c05-887a-17d865dd9305">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"appNames : " ++ (payload.appNames.appName reduce ($ ++ "," ++ $$) default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToEnableSchedulers-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="5c113ad5-1953-46b6-863c-c84f1518b3ea" name="logger-api-start-flow" />
+        <flow-ref doc:name="put-scheduler-info-subflow" doc:id="56f69f84-5bb0-4d47-9551-11b0d7488c04" name="put-scheduler-start-stop-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="9637fd57-d451-4669-9332-57eb26199f7c" name="logger-api-end-flow" />
+    </flow>
+    <flow name="get:\v1\scheduler\status:application\json:common-utlity-api-config">
+        <ee:transform doc:id="134ff58c-c568-477e-968a-a01e3e208ee7" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <!-- <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+-&#45;&#45;
+payload.appNames splitBy  (",")]]></ee:set-variable> -->
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\scheduler\status"]]></ee:set-variable>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames splitBy  (",") default []]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="2cc19eb0-331a-4bed-9330-2c4d2ff7ba3f">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"appNames : " ++ (payload.appNames default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToDisableSchedulers-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="0b5d5e04-41bb-44cf-8554-ddaa5a654051" name="logger-api-start-flow" />
+        <flow-ref doc:name="get-scheduler-info-subflow" doc:id="823d4ede-7f87-4f2e-85be-ff69e71b44b7" name="get-scheduler-info-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="5f69070a-ba65-4c50-85ca-077177298ad1" name="logger-api-end-flow" />
+    </flow>
+        <flow name="post:\v1\scheduler\run:application\json:common-utlity-api-config">
+       <ee:transform doc:id="3f96b84c-bea3-43d0-bb95-000cd6bdb218" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <!-- <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+-&#45;&#45;
+payload.appNames splitBy  (",")]]></ee:set-variable> -->
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\scheduler\run"]]></ee:set-variable>
+                <ee:set-variable variableName="appNames"><![CDATA[%dw 2.0
+output application/java
+---
+payload.appNames.appName default []]]></ee:set-variable>
+                <ee:set-variable variableName="inputData"><![CDATA[%dw 2.0
+output application/json
+---
+payload.appNames map{
+    appName : $.appName,
+    schedulerNames: $.schedulerNames splitBy  ","}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="c92f7b2c-6ee6-4302-98b2-57bdf5d92b8d">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"appNames : " ++ (payload.appNames.appName reduce ($ ++ "," ++ $$) default '')]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToRunSchedulers-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="ffc52adc-1a80-476f-9864-60d1d62c5ffe" name="logger-api-start-flow" />
+        <flow-ref doc:name="post-scheduler-run-subflow" doc:id="b0856ab7-15e5-4b45-b5db-07fe0a618b8b" name="post-scheduler-run-subflow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="3ab809dc-6946-4f77-8e48-26ec170c821e" name="logger-api-end-flow" />
+    </flow>
+    <flow name="post:\v1\notification\job:application\json:common-utlity-api-config">
+       <ee:transform doc:id="099c7cdd-e730-4ad0-ab73-5fe56faca9a7" doc:name="Set Properties">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="flowName"><![CDATA[%dw 2.0
+output application/java
+---
+"\v1\notification\job"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set Context" doc:id="d11c1621-0ec3-4d1d-99c2-50e6240bca9c">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="context1"><![CDATA[%dw 2.0
+output application/java
+---
+"jobId : " ++ payload.Email.Body.Job.Id]]></ee:set-variable>
+                <ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedRequestToJobNotification-API"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="logger-api-start-flow" doc:id="e6d37896-3cc1-4dac-927c-be9de5a95367" name="logger-api-start-flow" />
+        <flow-ref doc:name="job-notification-implFlow" doc:id="b58a9c85-90d4-45e1-8063-4df3c2594a57" name="job-notification-implFlow" />
+        <flow-ref doc:name="logger-api-end-flow" doc:id="3356a664-7ee4-4128-bd79-02341f6a3c71" name="logger-api-end-flow" />
+    </flow>
+    
+</mule>

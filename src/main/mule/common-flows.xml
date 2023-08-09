@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<sub-flow name="send-email-subflow" doc:id="f87056cf-4d51-4a23-99df-1e7bba04ad1e" >
+		<logger level="INFO" doc:name="Logger" doc:id="ca87ca4f-00ec-411e-bd45-a8564ed46cfa" message="Email mesage prepared #[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="c61d5503-0787-44ee-b1ea-99378f3f4d32">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+write({
+"html": vars.emailBody
+}, 'application/x-www-form-urlencoded')]]></ee:set-payload>
+			</ee:message>
+		</ee:transform> 
+		
+				<http:request method="POST" doc:name="invoke_mail_gun" doc:id="4603edf2-43da-4a39-9d7e-1bf90b9821c4" config-ref="HTTP_Request_Configuration-MailGun" path="${mailgun.api.send.email.path}">
+			<http:headers><![CDATA[#[{
+	"Authorization" : "Basic "++ Mule::p('mailgun.authorization.key'),
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+					<http:query-params><![CDATA[#[output application/java
+---
+{
+	"cc" : Mule::p('mailgun.api.cc.email'),
+	"from" : Mule::p('mailgun.api.from.email'),
+	"to" : if(vars.emailTo?) vars.emailTo else Mule::p('mailgun.api.to.email'),
+	"subject" : vars.emailSubject
+}]]]></http:query-params>
+					<http:response-validator>
+						<http:success-status-code-validator values="200" />
+					</http:response-validator>
+				</http:request>
+		<logger level="INFO" doc:name="End" doc:id="8d338a27-fdb2-40f9-b4ef-941534882270" message="Email send completed."/>
+	</sub-flow>
+	<sub-flow name="email-template-sub-flow" doc:id="f9ae4ec5-02b8-4ef0-a5fe-5dbba8f1013d" >
+		<parse-template doc:name="Parse Template" doc:id="931be329-378f-4a63-99f2-94183adb03bf" location="${mule.home}/apps/${app.name}/email/template/email-template.html" target="emailBody" targetValue="#[payload]" />
+				<async doc:name="Async" doc:id="ccdd77a3-7123-4ad4-a5fa-a1acef0aabd8" >
+					<flow-ref doc:name="send-email-subflow" doc:id="10b8a6c4-2dfd-404d-a8e5-551067c7c1a1" name="send-email-subflow" />
+				</async>
+	</sub-flow>
+	<sub-flow name="common-retrievetoken-subflow" doc:id="56bbd3a5-8718-4fd7-b1c0-a8e041fd1203" >
+		<os:retrieve doc:name="Retrieve" doc:id="3dc61b3c-77e1-483a-8051-75f44e2a0a76" key="#['token']" objectStore="Object_store">
+			<os:default-value ><![CDATA[#['access_token_expired']]]></os:default-value>
+		</os:retrieve> 
+		
+		<choice doc:name="Choice" doc:id="613d801d-e8e7-4990-8e4e-78ec5d169e40" >
+			<when expression='#[payload == "access_token_expired"]'>
+				<flow-ref doc:name="common-auth-api-subflow" doc:id="7c684c97-35ac-4e01-acdf-eaf4da5cf8f7" name="common-auth-api-subflow"/>
+			</when>
+			<otherwise >
+				<logger level="DEBUG" doc:name="Logger" doc:id="ca92cf2c-0a0f-4002-8e01-cdd53c744968" message="Access Token Found in Object Store  :  #[payload]"/>
+				<ee:transform doc:name="Transform Message" doc:id="4a770f7d-3a83-414e-8d18-50256359c1c2" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="access_token" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="common-auth-api-subflow" doc:id="71ed0145-1e4a-4ef0-aedf-4057e0bfa315" >
+		<http:request method="POST" doc:name="HTTP  Authorize API" doc:id="aa75b29d-ec70-49be-90d7-48cb9a3d41dd" config-ref="HTTP_Stats_Authorize_Configuration" path="${ch.api.path}">
+			<http:body><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+  "username": Mule::p('ch.api.username'),
+  "password": Mule::p('ch.api.password')
+}]]]></http:body>
+		</http:request>
+		<ee:transform doc:name="Set Access Token" doc:id="41d85bcd-61ca-4353-a177-61c45ede6387">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="access_token" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.access_token]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<os:store doc:id="f52ce0a5-24f9-4c61-9221-e86f172a57c2" key="#['token']" objectStore="Object_store">
+			<os:value ><![CDATA[#[vars.access_token]]]></os:value>
+		</os:store>
+	</sub-flow>
+</mule>

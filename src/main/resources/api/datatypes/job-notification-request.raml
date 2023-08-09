@@ -1,0 +1,71 @@
+#%RAML 1.0 DataType
+type: object
+properties:
+  Email:
+    type: object
+    properties:
+      From:
+        type: string
+        required: true
+        default: "rsircar@rodanandfields.com"
+      To:
+        type: string
+        required: true
+        default: "rsircar@rodanandfields.com"
+      Subject:
+        type: string
+        required: true
+        default: "rsircar@rodanandfields.com"
+      Body:
+        type: object
+        required: true
+        properties:
+          Job:
+            type: object
+            required: true
+            properties:
+              Id:
+                type: string
+                required: true
+                default: "0000000268424196-091c0fa1716e410380db8395cc7c2d8f"
+              MessageType:
+                type: string
+                required: true
+                default: "Bill Of Material"
+              StartTime:
+                type: string
+                required: true
+                default: "2022-09-12T17:22:15.291Z"
+              EndTime:
+                type: string
+                required: true
+                default: "2022-09-12T17:22:15.854Z"
+              Status:
+                type: string
+                enum: [INCOMPLETE,SUCCESS,FAILED,PARTIAL_SUCCESS]
+                required: true
+                default: "SUCCESS"
+              TotalCount:
+                type: string
+                required: true
+                default: "1"
+              SuccessCount:
+                type: string
+                required: true
+                default: "1"
+              FailureCount:
+                type: string
+                required: true
+                default: "0"
+              ProductSKU:
+                type: string
+                required: false
+                default: "8002-02-0002"
+              Environment:
+                type: string
+                required: false
+                default: "PROD"
+              FileName:
+                type: string
+                required: false
+                default: "IDOCNUMBER: 0000000268424196"

@@ -1,0 +1,525 @@
+#%RAML 1.0
+# baseUri: https://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api
+title: common-utlity-api
+version: v1
+mediaType: application/json
+securitySchemes:
+  oauth_2_0 : !include oauth2_security_scheme.raml
+types: 
+  ErrorResponse : !include datatypes/custom-error-message.raml
+  appStatusRequest  : !include datatypes/app-status-request.raml
+  amqStatusRequest  : !include datatypes/amq-status-request.raml
+  apiStatusRequest  : !include datatypes/api-status-request.raml
+  appOperationRequest  : !include datatypes/app-operation-request.raml
+  schedulerStatusRequest  : !include datatypes/scheduler-status-request.raml
+  schedulerEnableRequest  : !include datatypes/scheduler-enable-request.raml
+  exchangeBindQueueRequest : !include datatypes/amq-exchangebindqueues-status-request.raml
+  jobNotificationRequest: !include datatypes/job-notification-request.raml
+  
+  
+/v1:
+  /notification:
+    /job:
+      post:
+        description: Published  a Job notification to given user email
+        body:
+          application/json:
+            type: jobNotificationRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/job-notification-response.raml
+  /amq:
+    /status:
+      put:
+        description: Get/Create AMQ status
+        body: 
+          application/json:
+            type: amqStatusRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/amq-status-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+    /list:
+     get:
+        description: Get AMQ Queue list
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/amq-QueueList-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+    /exchange:
+      put:
+        description: Get/Create Exchange bind queue status
+        body: 
+          application/json:
+            type: exchangeBindQueueRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/amq-exchange-binding-queue-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+      /list:
+        get:
+          description: Get AMQ Exchange name and binded Queue list
+          body: 
+            application/json:
+              example: {"region": "us-west-1"}
+          responses: 
+            200:
+              body:
+                application/json:
+                  example: !include examples/amq-exchange-bounded-queue-list-response.raml
+            400:
+              body:
+                application/json:
+                  type: ErrorResponse
+                  example: |
+                    {
+                    "status": "400",
+                    "errorCode": "BAD_REQUEST",
+                    "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                    "userMessage": "this is an end-user friendly message description of what happened",
+                     "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                    }
+            401:
+              body:
+                application/json:
+                  type: ErrorResponse
+                  example: |
+                    {
+                    "status": "401",
+                    "errorCode": "UNAUTHORIZED",
+                    "developerMessage": "Upstream service did not authorize the request.",
+                    "userMessage": "this is an end-user friendly message description of what happened",
+                    "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                    }
+                        
+  /apps:
+    /start:
+      post:
+        description: Start application
+        body: 
+          application/json:
+            type: appOperationRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/app-operation-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+
+    /stop:
+      post:
+        description: Stop application
+        body: 
+          application/json:
+            type: appOperationRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/app-operation-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+    /list:
+     get:
+        description: Get application List
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/app-List-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+     
+    /restart:
+      post:
+        description: Stop application
+        body: 
+          application/json:
+            type: appOperationRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/app-operation-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }                
+
+    /status:
+      get:
+        description: Get application status
+        body: 
+          application/json:
+            type: appStatusRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/app-status-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+  /api:
+    /status:
+      get:
+        description: Get api status from API manager
+        body: 
+          application/json:
+            type: apiStatusRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/api-status-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+  /scheduler:
+    /status:
+      get:
+        description: Get scheduler status from Runtime manager
+        body: 
+          application/json:
+            type: schedulerStatusRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/scheduler-status-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+
+    /enable:
+      put:
+        description: enable scheduler
+        body: 
+          application/json:
+            type: schedulerEnableRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/scheduler-enable-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+    /disable:
+      put:
+        description: enable scheduler
+        body: 
+          application/json:
+            type: schedulerEnableRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/scheduler-enable-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }   
+    /run:
+      post:
+        description: enable scheduler
+        body: 
+          application/json:
+            type: schedulerEnableRequest
+        responses: 
+          200:
+            body:
+              application/json:
+                example: !include examples/scheduler-enable-response.raml
+          400:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "400",
+                  "errorCode": "BAD_REQUEST",
+                  "developerMessage": "The request could not be understood by the server due to malformed syntax",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }
+          401:
+            body:
+              application/json:
+                type: ErrorResponse
+                example: |
+                  {
+                  "status": "401",
+                  "errorCode": "UNAUTHORIZED",
+                  "developerMessage": "Upstream service did not authorize the request.",
+                  "userMessage": "this is an end-user friendly message description of what happened",
+                  "moreInfo": "http://rf-dev3-common-utlity-api.us-w1.cloudhub.io/api/v1"
+                  }                            

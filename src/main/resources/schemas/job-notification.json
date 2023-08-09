@@ -1,0 +1,93 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {},
+    "id": "http://example.com/example.json",
+    "properties": {
+        "Email": {
+            "id": "/properties/Email",
+            "properties": {
+                "Body": {
+                    "id": "/properties/Email/properties/Body",
+                    "properties": {
+                        "Job": {
+                            "id": "/properties/Email/properties/Body/properties/Job",
+                            "properties": {
+                                "EndTime": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/EndTime",
+                                    "type": "string"
+                                },
+                                "FailureCount": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/FailureCount",
+                                    "type": "string"
+                                },
+                                "Id": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/Id",
+                                    "type": "string"
+                                },
+                                "MessageType": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/MessageType",
+                                    "type": "string"
+                                },
+                                "StartTime": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/StartTime",
+                                    "type": "string"
+                                },
+                                "Status": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/Status",
+                                    "type": "string",
+                                    "enum": ["INCOMPLETE","SUCCESS", "FAILED", "PARTIAL_SUCCESS"] 
+                                },
+                                "SuccessCount": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/SuccessCount",
+                                    "type": "string"
+                                },
+                                "TotalCount": {
+                                    "id": "/properties/Email/properties/Body/properties/Job/properties/TotalCount",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "Status",
+                                "SuccessCount",
+                                "MessageType",
+                                "FailureCount",
+                                "TotalCount",
+                                "StartTime",
+                                "EndTime",
+                                "Id"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "Job"
+                    ],
+                    "type": "object"
+                },
+                "From": {
+                    "id": "/properties/Email/properties/From",
+                    "type": "string"
+                },
+                "Subject": {
+                    "id": "/properties/Email/properties/Subject",
+                    "type": "string"
+                },
+                "To": {
+                    "id": "/properties/Email/properties/To",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Body",
+                "To",
+                "From",
+                "Subject"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "Email"
+    ],
+    "type": "object"
+}

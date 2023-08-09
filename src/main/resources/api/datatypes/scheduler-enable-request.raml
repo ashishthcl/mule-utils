@@ -1,0 +1,14 @@
+#%RAML 1.0 DataType
+type: object
+properties:
+  appNames :
+    type: array
+    required: true
+    items:
+      properties:
+        appName:
+          type: string
+          required: true
+        schedulerNames:
+          type: string
+          required: true

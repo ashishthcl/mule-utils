@@ -1,0 +1,578 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="get-scheduler-info-subflow" doc:id="f154f94e-d6ba-4739-a15e-9bc01920fb0b" >
+		<set-variable value="get-scheduler-info-subflow" doc:name="Set Variable" doc:id="839f00c9-048c-414d-bce5-c77c7380dfde" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="9c0eac39-e2d9-4523-ac64-d324c1f6e516" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-GetSchedulerInfo-API"]]></ee:set-variable>
+				<ee:set-variable variableName="responsePayload" ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="40a3ee18-e84c-4b3c-bd0b-18450c709435" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="386d7d32-fa56-4348-b178-86f93ee0f77e" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointRuntimeAPIToGetSchedulersInfo-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="acaf1168-b02f-49ab-bdd6-9970df90efa4" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="bd7d09b7-f29d-4de3-bcad-5e0d9cd9dbe4" name="common-retrievetoken-subflow"/>
+		<flow-ref doc:name="scheduler-info-implSub_Flow" doc:id="d03a9810-6d81-4956-83b8-ecf62eb748b6" name="scheduler-info-implSub_Flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="55df128a-2a53-4bbd-8be3-92944145e4cd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.responsePayload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-CallAnypointRuntimeAPIToGetSchedulersInfoSuccessful-API"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="26292bdb-d2e2-4798-b9d5-d546dcede05e" name="logger-after-api-call-flow" />
+		<choice doc:name="Choice" doc:id="58aac77d-88be-4f83-a216-ec66749a1fe1">
+			<when expression="#[sizeOf(payload) &gt; 0]">
+			<ee:transform doc:name="Transform Message" doc:id="877e465f-4c6a-46a5-9636-36386edb71d7">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	appName: payload01.appName,
+	schedulerStatus: (payload01.schedulers map ((scheduler, indexOfScheduler) -> (scheduler.schedulerName ++ "<b style='color:brown !important;'> " ++ scheduler.status ++ " </b>")))  joinBy ("</br>")
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Email Info" doc:id="4ffb128f-da41-42fe-958b-de48db114d22">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.schedulersInfo.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.schedulersInfo.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="72d84e6c-dc02-4ede-bcf8-61f76a5e227b" name="email-template-sub-flow" />
+				<ee:transform doc:name="Transform Message" doc:id="1fe1c872-a9b1-4349-869d-a8ef3e8aaf78">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.responsePayload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="1779c84c-e995-4740-a6f1-238308dc5f3a" />
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="a7e4e45c-1b3a-4b80-9f0e-f36c87fdb41b" name="logger-end-process-flow"/>
+	</sub-flow>
+	<sub-flow name="put-scheduler-start-stop-subflow" doc:id="c23a9795-6205-4dfe-b2a7-72d60d29a761" >
+		<set-variable value="post-app-stop-subflow" doc:name="Set Variable" doc:id="85d6f206-4bb2-4ae9-ae99-fe011e32fb0c" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="72c99666-d2b2-4d6e-bcae-b12437eadd94" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'disable') "CommonUtilityAPI-StopSchedulers-API"
+else "CommonUtilityAPI-StartSchedulers-API"
+
+]]></ee:set-variable>
+				<ee:set-variable variableName="responsePayload" ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="4df5defa-4148-4f96-8c33-0b5eaacfdba8" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="f9720991-058e-4c8a-9534-3c5efb2153bd" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'enable') "CommonUtilityAPI-CallAnypointApiToStartSchedulers-API"
+else "CommonUtilityAPI-CallAnypointApiToStopSchedulers-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="608e12cc-6d4e-4c68-b8ec-58e60ae53384" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="e9420a98-ddd1-4ca7-ac9d-a396a3be1425" name="common-retrievetoken-subflow"/>
+		<flow-ref doc:name="scheduler-info-implSub_Flow" doc:id="17a2aa8c-3f37-4452-a379-31a14075ff0d" name="scheduler-info-implSub_Flow"/>
+		
+		<flow-ref doc:name="scheduler-info-impl-filter-subFlow" doc:id="d1359e7a-ca4d-4a6f-b05b-d01d4d1526ce" name="scheduler-info-impl-filter-subFlow"/>
+		<ee:transform doc:name="Transform Message" doc:id="f4a238e5-ea75-4ec4-8e33-771ffacd22dc" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'enable') "CommonUtilityAPI-CallAnypointApiToStartSchedulersSuccess-API"
+else "CommonUtilityAPI-CallAnypointApiToStopSchedulersSuccess-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="2b3a8e2f-43f9-4b33-aac9-499c921800b8" name="logger-after-api-call-flow" />
+		
+		<ee:transform doc:name="Transform Message" doc:id="6938b8a0-34e5-4d85-8b0e-834b856257ae" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'stop') "CommonUtilityAPI-StoppedApps-API"
+else "CommonUtilityAPI-StartedApps-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="e2ad2a1f-d5e9-497d-94ff-a96e3c6b9b3c">
+			<when expression="#[sizeOf(payload) &gt; 0]">
+			<ee:transform doc:name="Email Info" doc:id="3c78afc6-14e7-4f15-b0b5-9e68fbcb77c4">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.schedulersInfo.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.schedulersInfo.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="email-template-sub-flow" doc:id="180ad582-e2db-4fc8-8fb4-8ae2880ffd93" name="email-template-sub-flow" />
+				<ee:transform doc:name="Transform Message" doc:id="ca9f249d-cd82-4390-83a5-b1bf83e3a60f">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.tableReport]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="720fc152-2136-4e3b-8819-05b6d58a3611" />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="b6c5da98-536f-4fd9-97ca-165038f25d76" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.operation == 'enable') "CommonUtilityAPI-StartedSchedulers-API"
+else "CommonUtilityAPI-StoppedSchedulers-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="125c2fea-6b59-4730-aa6d-e9965e1fb0d2" name="logger-end-process-flow"/>
+	</sub-flow>
+	<sub-flow name="post-scheduler-run-subflow" doc:id="265685c6-422a-48a4-a119-5bd9cb982ea6" >
+		<set-variable value="post-scheduler-run-subflow" doc:name="Set Variable" doc:id="fc23a3f2-3a98-4c37-a74d-420e6d38d44e" variableName="flowName"/>
+		<ee:transform doc:name="Transform Message" doc:id="e768291a-efe3-45be-bde7-531792b44dbb" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-RunSchedulers-API"
+
+]]></ee:set-variable>
+				<ee:set-variable variableName="responsePayload" ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="91c8fdc9-ec7f-49f1-a1ad-a06fb7f6d374" name="logger-start-process-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="06a9cd56-41b6-4248-89cf-df46e5c358ef" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-CallAnypointApiToRunSchedulers-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="f35c16c8-fa67-41cb-803d-2a8001a0c973" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="0fadeeb0-ff41-47d8-bfe3-be5ded068d28" name="common-retrievetoken-subflow"/>
+		<flow-ref doc:name="scheduler-info-implSub_Flow" doc:id="fde03806-7b8c-41bb-99ae-f03cda66e77c" name="scheduler-info-implSub_Flow"/>
+		
+		<flow-ref doc:name="scheduler-run-impl-subFlow" doc:id="1f0a0137-d43e-4240-a33f-bf10761401fb" name="scheduler-run-impl-subFlow"/>
+		<ee:transform doc:name="Transform Message" doc:id="54669559-4f12-41e9-a305-1634c190f2dd" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-CallAnypointApiToRunSchedulersSuccess-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="c7eda7b4-1371-4d44-858e-5fa488abd6fe" name="logger-after-api-call-flow" />
+		<ee:transform doc:name="Transform Message" doc:id="23dff3c5-defb-43c6-9332-155276158a2f" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="context9" ><![CDATA[%dw 2.0
+output application/java
+---
+"CommonUtilityAPI-RunSchedulersSuccessful-API"
+
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="72393c42-3d8b-454c-8e4f-d078f53c74f1">
+			<when expression="#[sizeOf(payload) &gt; 0]">
+			<ee:transform doc:name="Email Info" doc:id="48ef0ec6-465a-4a1b-a71f-fb3532c47c2e">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.schedulersInfo.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.schedulersInfo.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="89aa3936-4c4a-4024-b6ea-b84038c716d5" name="email-template-sub-flow" />
+				<ee:transform doc:name="Transform Message" doc:id="7ce542d8-bfbf-424a-8d57-43e79392eb25">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.tableReport]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="e4c27138-3413-4c1c-8f4a-0b423e05e482" />
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="be46af56-9ed4-410b-a6e5-34b7b5d580d9" name="logger-end-process-flow"/>
+	</sub-flow>
+	<sub-flow name="scheduler-info-implSub_Flow" doc:id="686061f2-14ea-4cb8-ab06-32de9052b0dc" >
+		<foreach doc:name="For Each" doc:id="e6fca892-0d48-4e67-96bd-b24a672c0385" collection="#[vars.appNames]">
+			<try doc:name="Try" doc:id="7ebf1cc8-1429-487f-8b75-dc4864f81403">
+				<http:request method="GET" doc:name="Request Runtime API" doc:id="78c41559-7d8f-4861-8285-3fecff9c686c" config-ref="HTTP_CH_API_Configuration" path="${ch.api.schedules.path}">
+		<http:headers><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : Mule::p('ch.api.envId'),
+	"Authorization" : "Bearer " ++ vars.access_token
+}]]]></http:headers>
+					<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"appName" : vars.appNames[vars.counter-1]
+}]]]></http:uri-params>
+		</http:request>
+				<error-handler>
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="c2956449-d20f-4c28-94d2-e99d03786dea" type="HTTP:FORBIDDEN, HTTP:NOT_FOUND, HTTP:UNAUTHORIZED">
+						<logger level="INFO" doc:name="Logger" doc:id="173dc36e-9bd1-441c-b42c-9d2b63d012af" message="#[payload ++ error.description]" />
+						<set-payload value="'not_found or Unauthorized or Forbidden'" doc:name="Set Payload" doc:id="9d6e6bde-af9a-41e3-a9c2-5b38e797df05" />
+					</on-error-continue>
+				</error-handler>
+			</try>
+			<ee:transform doc:name="Transform Message" doc:id="22ad4001-5350-4ec1-be1f-0f443f7026e3">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="responsePayload"><![CDATA[%dw 2.0
+output application/json
+var apiCallStatus = if ( attributes.statusCode == 200 ) true  else false
+---
+vars.responsePayload ++ [{
+	appName: vars.appNames[vars.counter-1],
+	(if ( apiCallStatus ) schedulers: payload map {
+		'flowName': $.flow,
+		'schedulerName': $.name,
+		'id': $.id,
+		'status': if ( $.enabled ) 'enabled' else 'disabled',
+		'lastRun': $.lastRun,
+		"schedule": $.schedule
+	}
+else 'status': payload)
+}]]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+	</sub-flow>
+	<sub-flow name="scheduler-info-impl-filter-subFlow" doc:id="1812f9ad-1189-4d15-a985-4d654d5661e8" >
+	<ee:transform doc:name="Transform Message" doc:id="5cfc1ea0-4225-46c1-8709-ef14a6d325f4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var resp  = ( vars.responsePayload filter ((item, index) -> item.schedulers != null) )
+---
+flatten(resp map ((v, k) -> 
+vars.inputData filter ((item, index) -> item.appName == v.appName) 
+))]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	<ee:transform doc:name="Transform Message" doc:id="81750c9d-7fd5-4f19-9439-8cd903ec8859" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.responsePayload map (v,k) -> {
+"appName" :v."appName",
+"schedulers": v.schedulers map (v1,k1) ->  {
+    "id":v1.id 
+}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="56ce3a97-3a3d-447b-8857-1fd3e02ee80c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.responsePayload map (i , j) -> {
+    "appName" : i.appName,
+    "Schedulers" : i.schedulers map 
+    (
+        if (flatten((vars.inputData filter ((item1, index1) -> item1.appName == i.appName))."schedulerNames") contains $.schedulerName)
+        {"id":  $.id, 
+        "schedulerName":$.schedulerName}
+        else {}
+         
+    ) filter ((item, index) -> item.id != null ) 
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="apiResponse" ><![CDATA[%dw 2.0
+output application/java
+---
+[]]]></ee:set-variable>
+				<ee:set-variable variableName="enabled" ><![CDATA[%dw 2.0
+output application/java
+---
+if (vars.operation == 'enable') true else if (vars.operation == 'disable') false else ""]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="22e22ea3-fd4a-4d23-93af-ae0233014038" >
+			<logger level="INFO" doc:name="Logger" doc:id="1c21df2b-c546-42ad-9af3-36cd8aec2ae1" message="#[payload.Schedulers]"/>
+			<set-variable value="#[payload.appName]" doc:name="Set Variable" doc:id="cfd97b08-0ba8-4164-a582-c1b85cfb905d" variableName="appName"/>
+			<choice doc:name="Choice" doc:id="6835cfe7-6b28-4f37-8cba-ab4176c2692b" >
+				<when expression="#[payload.Schedulers != null]">
+					<foreach doc:name="For Each" doc:id="1c5fea70-1934-47ef-b0f8-3936a5ff15a1" collection="#[payload.Schedulers]">
+				<http:request method="PUT" doc:name="Request Runtime API" doc:id="9af73f04-6853-44e4-b1c8-a27546e91903" config-ref="HTTP_CH_API_Configuration" path="${ch.api.schedules.path}">
+		<http:body ><![CDATA[#[%dw 2.0
+output application/json
+---
+[
+    {
+        "enabled": vars.enabled,
+        "id": payload.id
+    }
+]]]]></http:body>
+							<http:headers><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : Mule::p('ch.api.envId'),
+	"Authorization" : "Bearer " ++ vars.access_token
+}]]]></http:headers>
+					<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"appName" : vars.appName
+}]]]></http:uri-params>
+		</http:request>
+						<logger level="INFO" doc:name="Logger" doc:id="a38b0628-9509-4480-8db3-a65c01d109f3" message="#[payload]" />
+						<ee:transform doc:name="Transform Message" doc:id="9dbd37e6-9009-4f11-8ed3-cb2b529725eb" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="apiResponse" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.apiResponse ++ (payload map {
+    "appName" : vars.appName,
+    "Scheduler" : $.name,
+    "Status" : if ($.enabled) 'enabled' else 'disabled'
+})]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+			</foreach>
+				</when>
+				<otherwise >
+					<logger level="INFO" doc:name="Logger" doc:id="c0147101-55e3-408b-bafe-8603909d923a" message="#['Schedulers not found']"/>
+				</otherwise>
+			</choice>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="8163633e-89fa-4d1b-a8a5-1d9d21bfae84" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.apiResponse]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="scheduler-run-impl-subFlow" doc:id="579bb813-5b8a-4d36-9af6-08a0fbe4dc25" >
+	<ee:transform doc:name="Transform Message" doc:id="ab025269-a2a0-4ada-8eb8-5d9c4cba6676" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var resp  = ( vars.responsePayload filter ((item, index) -> item.schedulers != null) )
+---
+flatten(resp map ((v, k) -> 
+vars.inputData filter ((item, index) -> item.appName == v.appName) 
+))]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	<ee:transform doc:name="Transform Message" doc:id="00d520d9-488c-46ed-a830-081c44d955a4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.responsePayload map (v,k) -> {
+"appName" :v."appName",
+"schedulers": v.schedulers map (v1,k1) ->  {
+    "id":v1.id 
+}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="a971b5a3-7149-4b7c-889e-59db1740cb97" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.responsePayload map (i , j) -> {
+    "appName" : i.appName,
+    "Schedulers" : i.schedulers map 
+    (
+        if (flatten((vars.inputData filter ((item1, index1) -> item1.appName == i.appName))."schedulerNames") contains $.schedulerName)
+        {"id":  $.id, 
+        "schedulerName":$.schedulerName}
+        else {}
+         
+    ) filter ((item, index) -> item.id != null ) 
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="apiResponse" ><![CDATA[%dw 2.0
+output application/java
+---
+[]]]></ee:set-variable>
+				<ee:set-variable variableName="enabled" ><![CDATA[%dw 2.0
+output application/java
+---
+if (vars.operation == 'enable') true else if (vars.operation == 'disable') false else ""]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="2658d5cc-e72c-41eb-8f97-97035a3d932e" >
+			<logger level="INFO" doc:name="Logger" doc:id="bab3a81a-3ccb-4604-a487-939c121c0d04" message="#[payload.Schedulers]"/>
+			<set-variable value="#[payload.appName]" doc:name="Set Variable" doc:id="82711391-7447-4616-bf07-6f524c136c7b" variableName="appName"/>
+			<choice doc:name="Choice" doc:id="6f94c5d0-a687-41de-9568-0e485fd2468c" >
+				<when expression="#[payload.Schedulers != null]">
+					<foreach doc:name="For Each" doc:id="5b2d94b2-aeec-402c-860c-42e3fd1d1aa6" collection="#[payload.Schedulers]">
+				<set-variable value='#[payload.schedulerName]' doc:name="Set Variable" doc:id="cae3641f-4bfe-44b4-8c74-4b19022ecfcc" variableName="schedulerName"/>
+						<http:request method="POST" doc:name="Request Runtime API" doc:id="4a3a4672-4388-4baa-8dc9-ea388bf62368" config-ref="HTTP_CH_API_Configuration" path="${ch.api.schedules.run.path}">
+							<http:headers><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : Mule::p('ch.api.envId'),
+	"Authorization" : "Bearer " ++ vars.access_token
+}]]]></http:headers>
+					<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"appName" : vars.appName,
+	"runId" : payload.id
+}]]]></http:uri-params>
+		</http:request>
+						<ee:transform doc:name="Transform Message" doc:id="a49c2c58-9e63-487a-9614-ef5d45194498" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="apiResponse" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.apiResponse + ({
+    "appName" : vars.appName,
+    "Scheduler" : vars.schedulerName,
+    "Status" : 'Run Successful'
+})]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+			</foreach>
+				</when>
+				<otherwise >
+					<logger level="INFO" doc:name="Logger" doc:id="34717e3a-cd4b-45c0-853a-b45af785a35b" message="#['Schedulers not found']"/>
+				</otherwise>
+			</choice>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="fa221db4-9172-4965-93f4-1469da346877" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.apiResponse]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>

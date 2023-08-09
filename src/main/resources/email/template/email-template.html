@@ -1,0 +1,29 @@
+<html>
+    <head>
+	<style>
+	table, th, td {
+	  border: 1px solid black;
+	  border-collapse: collapse;
+	}
+	</style>
+</head>
+  <body>
+    <p>#[vars.emailMessage]</p>
+    <br />
+  #[output application/xml writeDeclaration=false
+---
+if(sizeOf(vars.tableColumns) >0) ({
+    table @(style: "width: 100%; font-family: Monospace" ): {
+        tr @(bgcolor: "#6c7ae0",style: "color: white !important; font-size:14px; "):  vars.tableColumns map {
+            th @(style: "text-align:center") : $
+        } reduce ((item, acc) -> acc ++ item),
+        tr @(align:"center", style: "color: #666666; font-size:12px; font-weight: 500; width:10%"): vars.tableReport map (item, index) -> {
+            (vars.tableColumns map 
+                (td @(style: "text-align:center"): item[$])
+            )
+        }
+    }
+}) else {br: null} ]
+<br />
+</body>
+</html>

@@ -1,0 +1,15 @@
+#%RAML 1.0 DataType
+type: object
+properties:
+  status : string
+  errorCode : string
+  developerMessage :
+    required: false
+    type: string
+  userMessage :
+    required: false
+    type: string
+  moreInfo :
+    required: false
+    type: string
+example: !include ../examples/custom-error-message-example.raml

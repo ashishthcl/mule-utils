@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="get-api-info-subflow" doc:id="f154f94e-d6ba-4739-a15e-9bc01920fb0b" >
+		<ee:transform doc:name="Set Variables" doc:id="d4fdeb11-c2f0-47c2-b677-155c9d9f62c8" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="flowName" ><![CDATA["get-api-info-subflow"]]></ee:set-variable>
+				<ee:set-variable variableName="context9" ><![CDATA["CommonUtilityAPI-GetAPIInfo-API"]]></ee:set-variable>
+				<ee:set-variable variableName="response" ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="logger-start-process-flow" doc:id="3b1bb08d-7703-4dad-aada-c4d3c240df13" name="logger-start-process-flow"/>
+		<flow-ref doc:name="logger-before-api-call-flow" doc:id="b3d0b7d3-0d3c-44fe-9562-73a5822da405" name="logger-before-api-call-flow"/>
+		<flow-ref doc:name="common-retrievetoken-subflow" doc:id="bd7d09b7-f29d-4de3-bcad-5e0d9cd9dbe4" name="common-retrievetoken-subflow"/>
+		<http:request method="GET" doc:name="GetApisInfo" doc:id="cc5a5853-248c-4da9-8266-2ef1eab6cd15" config-ref="HTTP_CH_API_Configuration" path="${ch.apimanager.api.path}">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Authorization" : "Bearer " ++ vars.access_token,
+	"Content-Type" : "application/x-www-form-urlencoded"
+}]]]></http:headers>
+<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"orgId" : Mule::p('ch.api.orgId'),
+	"envId" : Mule::p('ch.api.envId')
+}]]]></http:uri-params>
+		</http:request>
+			<ee:transform doc:name="Transform Message" doc:id="bc7179b2-ac48-4546-9d14-e11cbcc0eed3" >
+				<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.assets filter (vars.apiNames contains $.assetId)  map {
+	apiName: $.assetId,
+	apiVersion: $.apis[0].productVersion,
+	apiId: $.apis[0].id,
+	apiStatus: $.apis[0].status,
+	apiAssetVersion: $.apis[0].assetVersion,
+	muleVersion: $.apis[0].technology
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+				<ee:set-variable variableName="context9"><![CDATA["CommonUtilityAPI-ReceivedAPIInfo-API"]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		<flow-ref doc:name="logger-after-api-call-flow" doc:id="ee290af3-9bd9-4cce-8632-d0ef7fbd13a8" name="logger-after-api-call-flow" />
+		<choice doc:name="Choice" doc:id="b07d6a52-a24c-4ae8-9ccb-4ab8d7ca392b">
+			<when expression="#[sizeOf(payload) &gt; 0]">
+			<ee:transform doc:name="Email Info" doc:id="4ffb128f-da41-42fe-958b-de48db114d22">
+			<ee:message>
+			</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="emailSubject"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.apisInfo.subject')]]></ee:set-variable>
+						<ee:set-variable variableName="emailMessage"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('email.apisInfo.message')]]></ee:set-variable>
+						<ee:set-variable variableName="tableColumns" ><![CDATA[%dw 2.0
+output application/java
+---
+if(not isEmpty(payload)) keysOf(payload[0]) else []]]></ee:set-variable>
+						<ee:set-variable variableName="tableReport" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+				<flow-ref doc:name="email-template-sub-flow" doc:id="240ce1c6-27b4-4bab-a6f4-387705bcd344" name="email-template-sub-flow" />
+				<ee:transform doc:name="Transform Message" doc:id="1fe1c872-a9b1-4349-869d-a8ef3e8aaf78">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.tableReport]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="1779c84c-e995-4740-a6f1-238308dc5f3a" />
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="logger-end-process-flow" doc:id="70e0ad3e-15bc-4c01-8a90-28e35bfad547" name="logger-end-process-flow"/>
+	</sub-flow>
+</mule>
